@@ -1,0 +1,4 @@
+﻿  space_resection.cpp
+E:\Aluminogenese\vs2022\AnalyticalPhotogrammetry\AnalyticalPhotogrammetry\space_resection.cpp(33,16): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\Aluminogenese\vs2022\AnalyticalPhotogrammetry\AnalyticalPhotogrammetry\space_resection.cpp(128,16): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  AnalyticalPhotogrammetry.vcxproj -> E:\Aluminogenese\vs2022\AnalyticalPhotogrammetry\x64\Debug\AnalyticalPhotogrammetry.exe
