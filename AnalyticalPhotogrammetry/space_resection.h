@@ -15,19 +15,13 @@ using namespace cv;
 class SpaceResection
 {
 public:
-	void get_param_from_file(const char* camera_file_name, const char* point_file_name);
-	void Initialize();
-	void calculate_rotation_matrix(Mat_<double>& R);
-	void calculate_A_matrix(int i, Mat_<double>R, Mat_<double>& A);
-	void calculate_L_matrix(int i, Mat_<double>& L, vector<ImagePoint> approxiate_image_point);
-	void correct_exterior_orientation_elements(ExteriorOrientationElements correction);
-	bool if_tolerant(ExteriorOrientationElements correction, double tolerance);
-	void calculate_space_resection(const char* camera_file_name, const char* point_file_name, const char* result_file_name);
-public:
-	vector<ImagePoint> image_point_;
-	vector<ControlPoint> control_point_;
-	Camera camera_;
-	ExteriorOrientationElements exterior_orientation_elements_;
-	double m_ = 50000.0;
+	static void get_param_from_file(const char* camera_file_name, const char* point_file_name, Camera& camera, vector<ImagePoint>& image_point, vector<ControlPoint>& control_point);
+	static void Initialize(double m, Camera camera, vector<ControlPoint> control_point, ExteriorOrientationElements& exterior_orientation_elements);
+	static void calculate_rotation_matrix(Mat_<double>& R, ExteriorOrientationElements exterior_orientation_elements);
+	static void calculate_A_matrix(int i, Camera camera, vector<ControlPoint> control_point, vector<ImagePoint> image_point, ExteriorOrientationElements exterior_orientation_elements, Mat_<double>R, Mat_<double>& A);
+	static void calculate_L_matrix(int i, Mat_<double>& L, vector<ImagePoint> image_point, vector<ImagePoint> approxiate_image_point);
+	static void correct_exterior_orientation_elements(ExteriorOrientationElements& exterior_orientation_elements, Mat_<double> correction);
+	static bool if_tolerant(Mat_<double> correction, double tolerance);
+	static void calculate_space_resection(const char* camera_file_name, const char* point_file_name, const char* result_file_name);
 };
 
