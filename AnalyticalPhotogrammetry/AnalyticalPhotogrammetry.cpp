@@ -4,11 +4,14 @@
 
 #include <iostream>
 #include"space_resection.h"
+#include"space_intersection.h"
 
 int main()
 {
-	SpaceResection space_resection_handler;
-	space_resection_handler.calculate_space_resection("./Data/camera.txt", "./Data/space_resection.txt", "./Result/space_resection_result.txt");
+	//SpaceResection space_resection_handler;
+	//space_resection_handler.calculate_space_resection("./Data/camera.txt", "./Data/space_resection.txt", "./Result/space_resection_result.txt");
+	SpaceIntersection space_intersection_handler;
+	space_intersection_handler.pointfactor_space_intersection("./Data/space_intersection/0319.txt", "./Data/space_intersection/0320.txt", "./Result/space_intersection_result.txt");
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
