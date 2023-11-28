@@ -5,13 +5,18 @@
 #include <iostream>
 #include"space_resection.h"
 #include"space_intersection.h"
+#include"interior_orientation.h"
 
 int main()
 {
 	//SpaceResection space_resection_handler;
 	//space_resection_handler.calculate_space_resection("./Data/camera.txt", "./Data/space_resection.txt", "./Result/space_resection_result.txt");
-	SpaceIntersection space_intersection_handler;
-	space_intersection_handler.pointfactor_space_intersection("./Data/space_intersection/0319.txt", "./Data/space_intersection/0320.txt", "./Result/space_intersection_result.txt");
+
+	//SpaceIntersection space_intersection_handler;
+	//space_intersection_handler.pointfactor_space_intersection("./Data/space_intersection/0320.txt", "./Data/space_intersection/0319.txt", "./Result/space_intersection_result.txt");
+
+	InteriorOrientation interior_orientation_handler;
+	interior_orientation_handler.affine_interior_orientation("./Data/interior_orientation/0319.txt", "./Result/interior_orientation_result.txt");
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
