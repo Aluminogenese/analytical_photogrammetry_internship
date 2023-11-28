@@ -12,7 +12,7 @@ void SpaceResection::get_param_from_file(const char* camera_file_name, const cha
 		ImagePoint tmp_image_point;
 		ControlPoint tmp_control_point;
 		sscanf(buffer, "%d %lf %lf %lf %lf %lf\n", &point_id, &x, &y, &X, &Y, &Z);
-		tmp_image_point = ImagePoint(x, y);
+		tmp_image_point = ImagePoint(x / 1000.0, y / 1000.0);
 		tmp_control_point = ControlPoint(X, Y, Z);
 		image_point.push_back(tmp_image_point);
 		control_point.push_back(tmp_control_point);
@@ -27,28 +27,24 @@ void SpaceResection::get_param_from_file(const char* camera_file_name, const cha
 	fclose(fp_camera);
 }
 
-void SpaceResection::Initialize(double m, Camera camera, vector<ControlPoint> control_point, ExteriorOrientationElements& exterior_orientation_elements)
+void SpaceResection::Initialize(double m, Camera camera, vector<ControlPoint> control_point, double& Xs, double& Ys, double& Zs, double& phi, double& omega, double& kappa)
 {
 	int point_num = control_point.size();
 	for (vector<ControlPoint>::const_iterator it = control_point.cbegin(); it != control_point.cend(); it++)
 	{
-		exterior_orientation_elements.Xs_ += (*it).x_;
-		exterior_orientation_elements.Ys_ += (*it).y_;
+		Xs += (*it).x_;
+		Ys += (*it).y_;
 	}
-	exterior_orientation_elements.Xs_ /= point_num;
-	exterior_orientation_elements.Ys_ /= point_num;
-	exterior_orientation_elements.Zs_ = m * camera.f_;
-	exterior_orientation_elements.phi_ = 0;
-	exterior_orientation_elements.omega_ = 0;
-	exterior_orientation_elements.kappa_ = 0;
+	Xs /= point_num;
+	Ys /= point_num;
+	Zs = m * camera.f_;
+	phi = 0;
+	omega = 0;
+	kappa = 0;
 }
 
-void SpaceResection::calculate_rotation_matrix(Mat_<double>& R, ExteriorOrientationElements exterior_orientation_elements)
+void SpaceResection::calculate_rotation_matrix(Mat_<double>& R, double phi, double omega, double kappa)
 {
-	double phi = exterior_orientation_elements.phi_;
-	double omega = exterior_orientation_elements.omega_;
-	double kappa = exterior_orientation_elements.kappa_;
-
 	R.at<double>(0, 0) = cos(phi) * cos(kappa) - sin(phi) * sin(omega) * sin(kappa);//a1
 	R.at<double>(0, 1) = -cos(phi) * sin(kappa) - sin(phi) * sin(omega) * cos(kappa);//a2
 	R.at<double>(0, 2) = -sin(phi) * cos(omega);//a3
@@ -60,12 +56,8 @@ void SpaceResection::calculate_rotation_matrix(Mat_<double>& R, ExteriorOrientat
 	R.at<double>(2, 2) = cos(phi) * cos(omega);//c3
 }
 
-void SpaceResection::calculate_A_matrix(int i, Camera camera, vector<ControlPoint> control_point, vector<ImagePoint> image_point, ExteriorOrientationElements exterior_orientation_elements, Mat_<double>R, Mat_<double>& A)
+void SpaceResection::calculate_A_matrix(int i, Camera camera, vector<ControlPoint> control_point, vector<ImagePoint> image_point, double Z, double phi, double omega, double kappa, Mat_<double>R, Mat_<double>& A)
 {
-	double phi = exterior_orientation_elements.phi_;
-	double omega = exterior_orientation_elements.omega_;
-	double kappa = exterior_orientation_elements.kappa_;
-	double Z = R.at<double>(0, 2) * (control_point[i].x_ - exterior_orientation_elements.Xs_) + R.at<double>(1, 2) * (control_point[i].y_ - exterior_orientation_elements.Ys_) + R.at<double>(2, 2) * (control_point[i].z_ - exterior_orientation_elements.Zs_);
 
 	A.at<double>(i * 2, 0) = (R.at<double>(0, 0) * camera.f_ + R.at<double>(0, 2) * (image_point[i].x_ - camera.x0_)) / Z;//a11
 	A.at<double>(i * 2, 1) = (R.at<double>(1, 0) * camera.f_ + R.at<double>(1, 2) * (image_point[i].x_ - camera.x0_)) / Z;//a12
@@ -87,15 +79,14 @@ void SpaceResection::calculate_L_matrix(int i, Mat_<double>& L, vector<ImagePoin
 	L.at<double>(i * 2 + 1, 0) = image_point[i].y_ - approxiate_image_point[i].y_;
 }
 
-void SpaceResection::correct_exterior_orientation_elements(ExteriorOrientationElements& exterior_orientation_elements, Mat_<double> X)
+void SpaceResection::correct_exterior_orientation_elements(double& Xs, double& Ys, double& Zs, double& phi, double& omega, double& kappa, Mat_<double> X)
 {
-	cout << "X:\n" << X << endl;
-	exterior_orientation_elements.Xs_ += X.at<double>(0, 0);
-	exterior_orientation_elements.Ys_ += X.at<double>(1, 0);
-	exterior_orientation_elements.Zs_ += X.at<double>(2, 0);
-	exterior_orientation_elements.phi_ += X.at<double>(3, 0);
-	exterior_orientation_elements.omega_ += X.at<double>(4, 0);
-	exterior_orientation_elements.kappa_ += X.at<double>(5, 0);
+	Xs += X.at<double>(0, 0);
+	Ys += X.at<double>(1, 0);
+	Zs += X.at<double>(2, 0);
+	phi += X.at<double>(3, 0);
+	omega += X.at<double>(4, 0);
+	kappa += X.at<double>(5, 0);
 }
 
 bool SpaceResection::if_tolerant(Mat_<double> X, double tolerance)
@@ -121,13 +112,13 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 	vector<ImagePoint> image_point;// 像点坐标
 	vector<ControlPoint> control_point;// 控制点坐标
 	Camera camera;// 相机内参x0, y0, f
-
-	ExteriorOrientationElements exterior_orientation_elements(0,0,0,0,0,0);// 外方位元素Xs，Ys，Zs，φ，ω，κ
+	double Xs = 0, Ys = 0, Zs = 0, phi = 0, omega = 0, kappa = 0;
+	//ExteriorOrientationElements exterior_orientation_elements(0,0,0,0,0,0);// 外方位元素Xs，Ys，Zs，φ，ω，κ
 	double m = 50000.0;// 比例尺分母
 	// 获取相机内参及像点和控制点坐标
 	SpaceResection::get_param_from_file(camera_file_name, point_file_name, camera, image_point, control_point);
     // 初始化参数
-	SpaceResection::Initialize(m,  camera, control_point, exterior_orientation_elements);
+	Initialize(m, camera, control_point, Xs, Ys, Zs, phi, omega, kappa);
 	int point_num = image_point.size();// 像点/控制点点数
 	// 初始化系数阵A与常数项系数阵L
 	Mat_<double> A = Mat::zeros(point_num * 2, 6, CV_32F);
@@ -138,24 +129,29 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 	do
 	{
 		// 计算旋转矩阵R
-		calculate_rotation_matrix(R, exterior_orientation_elements);
+		calculate_rotation_matrix(R, phi, omega, kappa);
 		//计算每个像点的近似值并计算误差方程系数
 		for (int i = 0; i < point_num; i++)
 		{
 			// 像点坐标近似值
-			approxiate_image_point[i].x_ = camera.x0_ - camera.f_ * (R.at<double>(0, 0) * (control_point[i].x_ - exterior_orientation_elements.Xs_) + R.at<double>(1, 0) * (control_point[i].y_ - exterior_orientation_elements.Ys_) + R.at<double>(2, 0) * (control_point[i].z_ - exterior_orientation_elements.Zs_))
-				/ (R.at<double>(0, 2) * (control_point[i].x_ - exterior_orientation_elements.Xs_) + R.at<double>(1, 2) * (control_point[i].y_ - exterior_orientation_elements.Ys_) + R.at<double>(2, 2) * (control_point[i].z_ - exterior_orientation_elements.Zs_));
-			approxiate_image_point[i].y_ = camera.y0_ - camera.f_ * (R.at<double>(0, 1) * (control_point[i].x_ - exterior_orientation_elements.Xs_) + R.at<double>(1, 1) * (control_point[i].y_ - exterior_orientation_elements.Ys_) + R.at<double>(2, 1) * (control_point[i].z_ - exterior_orientation_elements.Zs_))
-				/ (R.at<double>(0, 2) * (control_point[i].x_ - exterior_orientation_elements.Xs_) + R.at<double>(1, 2) * (control_point[i].y_ - exterior_orientation_elements.Ys_) + R.at<double>(2, 2) * (control_point[i].z_ - exterior_orientation_elements.Zs_));
+			approxiate_image_point[i].x_ = camera.x0_ - camera.f_ * (R.at<double>(0, 0) * (control_point[i].x_ - Xs) + R.at<double>(1, 0) * (control_point[i].y_ - Ys) + R.at<double>(2, 0) * (control_point[i].z_ - Zs))
+				/ (R.at<double>(0, 2) * (control_point[i].x_ - Xs) + R.at<double>(1, 2) * (control_point[i].y_ - Ys) + R.at<double>(2, 2) * (control_point[i].z_ - Zs));
+			approxiate_image_point[i].y_ = camera.y0_ - camera.f_ * (R.at<double>(0, 1) * (control_point[i].x_ - Xs) + R.at<double>(1, 1) * (control_point[i].y_ - Ys) + R.at<double>(2, 1) * (control_point[i].z_ - Zs))
+				/ (R.at<double>(0, 2) * (control_point[i].x_ - Xs) + R.at<double>(1, 2) * (control_point[i].y_ - Ys) + R.at<double>(2, 2) * (control_point[i].z_ - Zs));
+			cout << approxiate_image_point[i].x_ << endl;
+			cout << approxiate_image_point[i].y_ << endl;
+			double Z = R.at<double>(0, 2) * (control_point[i].x_ - Xs) + R.at<double>(1, 2) * (control_point[i].y_ - Ys) + R.at<double>(2, 2) * (control_point[i].z_ - Zs);
 			// 误差方程系数
-			calculate_A_matrix(i, camera, control_point, image_point, exterior_orientation_elements, R, A);
+			calculate_A_matrix(i, camera, control_point, image_point, Z, phi, omega, kappa, R, A);
+			cout << A << endl;
 			calculate_L_matrix(i, L, image_point, approxiate_image_point);
+			cout << L << endl;
 		}
 		// 根据法化法方程计算外方位元素近似值改正数
 		X = (A.t() * A).inv() * A.t() * L;
 		cout << "X:\n" << X << endl;
 
-		SpaceResection::correct_exterior_orientation_elements(exterior_orientation_elements, X);
+		correct_exterior_orientation_elements(Xs, Ys, Zs, phi, omega, kappa, X);
 		iteration += 1;
 	} while (!if_tolerant(X, tolerance));
 	// 计算像点坐标观测值改正数
@@ -168,12 +164,12 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 	cout << "Space Resection Result" << endl;
 	cout << "Iteration: " << iteration << endl;
 	iteration = 0;
-	cout << "Xs = " << fixed << setprecision(2) << exterior_orientation_elements.Xs_ << endl;
-	cout << "Ys = " << fixed << setprecision(2) << exterior_orientation_elements.Ys_ << endl;
-	cout << "Zs = " << fixed << setprecision(2) << exterior_orientation_elements.Zs_ << endl;
-	cout << "fai = " << fixed << setprecision(5) << exterior_orientation_elements.phi_ << endl;
-	cout << "omega = " << fixed << setprecision(5) << exterior_orientation_elements.omega_ << endl;
-	cout << "kappa = " << fixed << setprecision(5) << exterior_orientation_elements.kappa_ << endl;
+	cout << "Xs = " << fixed << setprecision(2) << Xs << endl;
+	cout << "Ys = " << fixed << setprecision(2) << Ys << endl;
+	cout << "Zs = " << fixed << setprecision(2) << Zs << endl;
+	cout << "fai = " << fixed << setprecision(5) <<phi << endl;
+	cout << "omega = " << fixed << setprecision(5) << omega << endl;
+	cout << "kappa = " << fixed << setprecision(5) << kappa << endl;
 	cout << "Rotation Matrix:" << endl;
 	cout << fixed << setprecision(5) << R << endl;
 	cout << "RMS Error: " << fixed << setprecision(5) << accuracy << endl;
@@ -181,12 +177,12 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 
 	ofstream outfile;
 	outfile.open(result_file_name, ios::out);
-	outfile << "Xs = " << fixed << setprecision(2) << exterior_orientation_elements.Xs_ << endl;
-	outfile << "Ys = " << fixed << setprecision(2) << exterior_orientation_elements.Ys_ << endl;
-	outfile << "Zs = " << fixed << setprecision(2) << exterior_orientation_elements.Zs_ << endl;
-	outfile << "fai = " << fixed << setprecision(5) << exterior_orientation_elements.phi_ << endl;
-	outfile << "omega = " << fixed << setprecision(5) << exterior_orientation_elements.omega_ << endl;
-	outfile << "kappa = " << fixed << setprecision(5) << exterior_orientation_elements.kappa_ << endl;
+	outfile << "Xs = " << fixed << setprecision(2) << Xs << endl;
+	outfile << "Ys = " << fixed << setprecision(2) << Ys << endl;
+	outfile << "Zs = " << fixed << setprecision(2) << Zs << endl;
+	outfile << "fai = " << fixed << setprecision(5) << phi << endl;
+	outfile << "omega = " << fixed << setprecision(5) << omega << endl;
+	outfile << "kappa = " << fixed << setprecision(5) << kappa << endl;
 	outfile << "Rotation Matrix:" << endl;
 	outfile << fixed << setprecision(5) << R << endl;
 	outfile << "RMS Error: " << fixed << setprecision(5) << accuracy << endl;
