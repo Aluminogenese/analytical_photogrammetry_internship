@@ -13,7 +13,7 @@ class SpaceIntersection
 public:
 	void get_param_from_file(const char* image_path, ImageForIntersection& image_for_intersection);
 	void calculate_rotation_matrix(Mat_<double>& R, ImageForIntersection image_for_intersection);
-	Mat coordinate_change(int i, Mat_<double>R, ImageForIntersection image_for_intersection);
+	Mat calculate_auxiliary_coordinate(int i, Mat_<double>R, ImageForIntersection image_for_intersection);
 	ControlPoint N1N2_intersection(int i, ImageForIntersection left_image, double N1, Mat_<double> left_auxiliary_coordinates);
 	void pointfactor_space_intersection(const char* left_image_path, const char* right_image_path, const char* reslut_file_path);
 public:

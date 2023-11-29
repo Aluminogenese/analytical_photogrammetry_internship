@@ -59,7 +59,7 @@ void SpaceIntersection::calculate_rotation_matrix(Mat_<double>& R, ImageForInter
 	R.at<double>(2, 2) = cos(phi) * cos(omega);//c3
 }
 
-Mat SpaceIntersection::coordinate_change(int i, Mat_<double> R, ImageForIntersection image_for_intersection)
+Mat SpaceIntersection::calculate_auxiliary_coordinate(int i, Mat_<double> R, ImageForIntersection image_for_intersection)
 {
 	Mat_<double> image_coordinate(3, 1);
 	image_coordinate.at<double>(0, 0) = image_for_intersection.image_point_[i].x_;
@@ -96,8 +96,8 @@ void SpaceIntersection::pointfactor_space_intersection(const char* left_image_pa
 	for (int i = 0; i < point_num; i++) 
 	{
 		// 由像空间坐标计算像空间辅助坐标
-		Mat_<double> left_auxiliary_coordinates = coordinate_change(i, R_left, left_image_);
-		Mat_<double> right_auxiliary_coordinates = coordinate_change(i, R_right, right_image_);
+		Mat_<double> left_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_left, left_image_);
+		Mat_<double> right_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_right, right_image_);
 		// 计算点投影系数
 		double N1 = (Bx * right_auxiliary_coordinates.at<double>(2, 0) - Bz * right_auxiliary_coordinates.at<double>(0, 0)) / (left_auxiliary_coordinates.at<double>(0, 0) * right_auxiliary_coordinates.at<double>(2, 0) - left_auxiliary_coordinates.at<double>(2, 0) * right_auxiliary_coordinates.at<double>(0, 0));
 		double N2 = (Bx * left_auxiliary_coordinates.at<double>(2, 0) - Bz * left_auxiliary_coordinates.at<double>(0, 0)) / (left_auxiliary_coordinates.at<double>(0, 0) * right_auxiliary_coordinates.at<double>(2, 0) - left_auxiliary_coordinates.at<double>(2, 0) * right_auxiliary_coordinates.at<double>(0, 0));
@@ -119,5 +119,4 @@ void SpaceIntersection::pointfactor_space_intersection(const char* left_image_pa
 	{
 		outfile << fixed << setprecision(5) << vec_control_point[i].id_ << " " << vec_control_point[i].x_ << " " << vec_control_point[i].y_ << " " << vec_control_point[i].z_ << endl;
 	}
-
 }

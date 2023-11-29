@@ -89,9 +89,8 @@ void SpaceResection::correct_exterior_orientation_elements(double& Xs, double& Y
 	kappa += X.at<double>(5, 0);
 }
 
-bool SpaceResection::if_tolerant(Mat_<double> X, double tolerance)
+bool SpaceResection::is_tolerant(Mat_<double> X, double tolerance)
 {
-	cout << X << endl;
 	if (fabs(X.at<double>(3,0)) < tolerance && fabs(X.at<double>(4, 0)) < tolerance && fabs(X.at<double>(5, 0)) < tolerance)
 	{
 		return true;
@@ -105,7 +104,7 @@ bool SpaceResection::if_tolerant(Mat_<double> X, double tolerance)
 void SpaceResection::calculate_space_resection(const char* camera_file_name, const char* point_file_name, const char* result_file_name)
 {
 	int iteration = 0;// 迭代次数
-	double tolerance = 0.01;// 限差
+	double tolerance = 2.9e-5;// 限差
 	Mat_<double> R = Mat::zeros(3, 3, CV_32F);// 旋转矩阵
 	Mat_<double> X = Mat::zeros(6, 1, CV_32F);// 未知数ΔXs，ΔYs，ΔZs，Δφ，Δω，Δκ
 
@@ -153,7 +152,7 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 
 		correct_exterior_orientation_elements(Xs, Ys, Zs, phi, omega, kappa, X);
 		iteration += 1;
-	} while (!if_tolerant(X, tolerance));
+	} while (!is_tolerant(X, tolerance));
 	// 计算像点坐标观测值改正数
 	Mat_<double> V = A * X - L;
 	Mat_<double> V_ = V.t() * V;
