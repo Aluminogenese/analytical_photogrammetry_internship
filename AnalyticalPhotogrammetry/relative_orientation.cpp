@@ -1,21 +1,20 @@
 #include "relative_orientation.h"
 
-void RelativeOrientation::get_param_from_file(const char* image_path, ImageForRelativeOrientation& image_for_relative_orientation)
+void RelativeOrientation::get_param_from_file(const char* image_path, Camera& interior_elements, vector<PlaneCoordinates>& image_points, double& m)
 {
 	FILE* fp = fopen(image_path, "r");
 	char buffer[512] = { 0 };
 	fgets(buffer, 512, fp);
-	double x0, y0, f, m;
+	double x0, y0, f;
 	sscanf(buffer, "%lf %lf %lf %lf\n", &f, &x0, &y0, &m);
-	image_for_relative_orientation.camera_ = Camera(x0/1000.0, y0/1000.0, f/1000.0);
-	image_for_relative_orientation.m_ = m;
+	interior_elements = Camera(x0/1000.0, y0/1000.0, f/1000.0);
 	while (!feof(fp))
 	{
 		int id;
 		double x, y;
 		fgets(buffer, 512, fp);
 		sscanf(buffer, "%d %lf %lf\n", &id, &x, &y);
-		image_for_relative_orientation.image_point_.push_back(ImagePoint(id, x / 1000.0, y / 1000.0));
+		image_points.push_back(PlaneCoordinates(id, x / 1000.0, y / 1000.0));
 	}
 }
 
@@ -37,12 +36,12 @@ void RelativeOrientation::calculate_relative_rotation_matrix(Mat_<double>& R)
 
 }
 
-Mat RelativeOrientation::calculate_auxiliary_coordinate(int i, Mat_<double> R, ImageForRelativeOrientation image_for_relative_orientation)
+Mat RelativeOrientation::calculate_auxiliary_coordinate(int i, Mat_<double>R, Camera interior_elements, vector<PlaneCoordinates> image_points)
 {
 	Mat_<double> image_coordinate(3, 1);
-	image_coordinate.at<double>(0, 0) = image_for_relative_orientation.image_point_[i].x_;
-	image_coordinate.at<double>(1, 0) = image_for_relative_orientation.image_point_[i].y_;
-	image_coordinate.at<double>(2, 0) = -image_for_relative_orientation.camera_.f_;
+	image_coordinate.at<double>(0, 0) = image_points[i].x_;
+	image_coordinate.at<double>(1, 0) = image_points[i].y_;
+	image_coordinate.at<double>(2, 0) = -interior_elements.f_;
 	Mat_<double> auxiliary_coordinates = R * image_coordinate;
 	return auxiliary_coordinates;
 }
@@ -93,17 +92,17 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 	int iteration = 0;
 	double tolerance = 3e-5;
 	// 读入左右片的像点坐标x,y,及其内方位元素x0,y0,f和比例尺m
-	get_param_from_file(left_image_path, left_image_);
-	get_param_from_file(right_image_path, right_image_);
+	get_param_from_file(left_image_path, left_image_interior_elements_, left_image_points_, left_m_);
+	get_param_from_file(right_image_path, right_image_interior_elements_, right_image_points_, right_m_);
 	// 计算左右片的旋转矩阵
 	Mat_<double> R_left = Mat::eye(3, 3, CV_32F);
 	Mat_<double> R_right = Mat::zeros(3, 3, CV_32F);
 
 	Mat_<double> X = Mat::zeros(5, 1, CV_32F); //dfai, domega, dkappa, du, dv 
-	int point_num = left_image_.image_point_.size();
+	int point_num = left_image_points_.size();
 	Mat_<double> A = Mat::zeros(point_num, 5, CV_32F);
 	Mat_<double> L = Mat::zeros(point_num, 1, CV_32F);
-	double Bx = right_image_.image_point_[0].x_ - left_image_.image_point_[0].x_;
+	double Bx = right_image_points_[0].x_ - left_image_points_[0].x_;
 	double By = 0.0, Bz = 0.0;
 	do
 	{
@@ -113,8 +112,8 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 		for (int i = 0; i < point_num; i++)
 		{
 			// 由像空间坐标计算像空间辅助坐标
-			Mat_<double> left_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_left, left_image_);
-			Mat_<double> right_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_right, right_image_);
+			Mat_<double> left_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_left, left_image_interior_elements_, left_image_points_);
+			Mat_<double> right_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_right, right_image_interior_elements_, right_image_points_);
 			// 计算点投影系数
 			double N1 = (Bx * right_auxiliary_coordinates.at<double>(2, 0) - Bz * right_auxiliary_coordinates.at<double>(0, 0)) / (left_auxiliary_coordinates.at<double>(0, 0) * right_auxiliary_coordinates.at<double>(2, 0) - left_auxiliary_coordinates.at<double>(2, 0) * right_auxiliary_coordinates.at<double>(0, 0));
 			double N2 = (Bx * left_auxiliary_coordinates.at<double>(2, 0) - Bz * left_auxiliary_coordinates.at<double>(0, 0)) / (left_auxiliary_coordinates.at<double>(0, 0) * right_auxiliary_coordinates.at<double>(2, 0) - left_auxiliary_coordinates.at<double>(2, 0) * right_auxiliary_coordinates.at<double>(0, 0));
@@ -122,11 +121,10 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 			calculate_A_matrix(i, Bx, N2, A, right_auxiliary_coordinates);
 			calculate_L_matrix(i, N1, N2, By, left_auxiliary_coordinates, right_auxiliary_coordinates, L);
 		}
-		cout << "A:\n" << A << endl;
+		// 计算未知数改正数
 		X = (A.t() * A).inv() * A.t() * L;
-		cout << "X:\n" << X << endl;
+		// 改正未知数
 		correct_relative_param(X);
-		cout << "relative_orientation_elements:\n" << relative_orientation_elements_ << endl;
 		iteration += 1;
 
 	} while (!is_tolerant(X, tolerance));
@@ -140,7 +138,7 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 	cout << "Residual:" << endl;
 	Mat_<double>V = A * X - L;
 	cout << V << endl;
-	cout << "Five Parameters of Relative Orientation(fai, omega, kappa, u, v): " << endl;
+	cout << "Five Parameters of Relative Orientation(φ, ω, κ, u, v): " << endl;
 	cout << relative_orientation_elements_.at<double>(0, 0) << " " << relative_orientation_elements_.at<double>(1, 0) << " " << relative_orientation_elements_.at<double>(2, 0) << " " << relative_orientation_elements_.at<double>(3, 0) << "  " << relative_orientation_elements_.at<double>(4, 0) << endl;
 	Mat_<double>V_ = V.t() * V;
 	double accuracy = sqrt(V_.at<double>(0, 0) / (point_num - 5));
@@ -150,7 +148,7 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 	outfile.open(result_file_path, ios::out);
 	outfile << "Residual:" << endl;
 	outfile << V << endl;
-	outfile << "Five Parameters of Relative Orientation(fai, omega, kappa, u, v): " << endl;
+	outfile << "Five Parameters of Relative Orientation(φ, ω, κ, u, v): " << endl;
 	outfile << relative_orientation_elements_.at<double>(0, 0) << " " << relative_orientation_elements_.at<double>(1, 0) << " " << relative_orientation_elements_.at<double>(2, 0) << " " << relative_orientation_elements_.at<double>(3, 0) << "  " << relative_orientation_elements_.at<double>(4, 0) << endl;
 	outfile << "RMS Error：" << accuracy << endl;
 	outfile << "Iteration: " << iteration << endl;

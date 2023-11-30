@@ -1,20 +1,20 @@
 #include "space_intersection.h"
 
-void SpaceIntersection::get_param_from_file(const char* image_path, ImageForIntersection& image_for_intersection)
+void SpaceIntersection::get_param_from_file(const char* file_path, double& m, Camera& interior_elements, Mat_<double>& exterior_elements, vector<PlaneCoordinates>& image_points)
 {
-	FILE* fp = fopen(image_path, "r");
+	FILE* fp = fopen(file_path, "r");
 	char buffer[512] = { 0 };
 	// 读入注释行
 	fgets(buffer, 512, fp);
 	fgets(buffer, 512, fp);
 
-	double f = 0.0, x0 = 0.0, y0 = 0.0, m = 0.0;
+	double f = 0.0, x0 = 0.0, y0 = 0.0;
 	fgets(buffer, 512, fp);
 	sscanf(buffer, "%lf %lf %lf %lf\n", &f, &x0, &y0, &m);
-	image_for_intersection.camera_.f_ = f / 1000.0;
-	image_for_intersection.camera_.x0_ = x0 / 1000.0;
-	image_for_intersection.camera_.y0_ = y0 / 10000.0;
-	image_for_intersection.m_ = m;
+	interior_elements.f_ = f / 1000.0;
+	interior_elements.x0_ = x0 / 1000.0;
+	interior_elements.y0_ = y0 / 1000.0;//mm→m
+
 	// 读入注释行
 	fgets(buffer, 512, fp);
 	fgets(buffer, 512, fp);
@@ -22,12 +22,12 @@ void SpaceIntersection::get_param_from_file(const char* image_path, ImageForInte
 	double phi = 0.0, omega = 0.0, kappa = 0.0, Xs = 0.0, Ys = 0.0, Zs = 0.0;
 	fgets(buffer, 512, fp);
 	sscanf(buffer, "%lf %lf %lf %lf %lf %lf\n", &phi, &omega, &kappa, &Xs, &Ys, &Zs);
-	image_for_intersection.exterior_orientation_elements_.phi_ = phi * CV_PI / 180.0;
-	image_for_intersection.exterior_orientation_elements_.omega_ = omega * CV_PI / 180.0;
-	image_for_intersection.exterior_orientation_elements_.kappa_ = kappa * CV_PI / 180.0;
-	image_for_intersection.exterior_orientation_elements_.Xs_ = Xs;
-	image_for_intersection.exterior_orientation_elements_.Ys_ = Ys;
-	image_for_intersection.exterior_orientation_elements_.Zs_ = Zs;
+	exterior_elements.at<double>(0, 0) = Xs;
+	exterior_elements.at<double>(1, 0) = Ys;//TODO
+	exterior_elements.at<double>(2, 0) = Zs;
+	exterior_elements.at<double>(3, 0) = phi * CV_PI / 180.0;
+	exterior_elements.at<double>(4, 0) = omega * CV_PI / 180.0;
+	exterior_elements.at<double>(5, 0) = kappa * CV_PI / 180.0;// 度→rad
 	// 读入注释行
 	fgets(buffer, 512, fp);
 	fgets(buffer, 512, fp);
@@ -37,16 +37,16 @@ void SpaceIntersection::get_param_from_file(const char* image_path, ImageForInte
 		int id = 0;
 		double x=0.0, y=0.0;
 		sscanf(buffer, "%d %lf %lf", &id, &x, &y);
-		image_for_intersection.image_point_.push_back(ImagePoint(id, x / 1000.0, y / 1000.0));
+		image_points.push_back(PlaneCoordinates(id, x / 1000.0, y / 1000.0));
 	}
 	fclose(fp);
 }
 
-void SpaceIntersection::calculate_rotation_matrix(Mat_<double>& R, ImageForIntersection image_for_intersection)
+void SpaceIntersection::calculate_rotation_matrix(Mat_<double>& R, Mat_<double> exterior_elements)
 {
-	double phi = image_for_intersection.exterior_orientation_elements_.phi_;
-	double omega = image_for_intersection.exterior_orientation_elements_.omega_;
-	double kappa = image_for_intersection.exterior_orientation_elements_.kappa_;
+	double phi = exterior_elements.at<double>(3, 0);
+	double omega = exterior_elements.at<double>(4, 0);
+	double kappa = exterior_elements.at<double>(5, 0);
 
 	R.at<double>(0, 0) = cos(phi) * cos(kappa) - sin(phi) * sin(omega) * sin(kappa);//a1
 	R.at<double>(0, 1) = -cos(phi) * sin(kappa) - sin(phi) * sin(omega) * cos(kappa);//a2
@@ -59,64 +59,73 @@ void SpaceIntersection::calculate_rotation_matrix(Mat_<double>& R, ImageForInter
 	R.at<double>(2, 2) = cos(phi) * cos(omega);//c3
 }
 
-Mat SpaceIntersection::calculate_auxiliary_coordinate(int i, Mat_<double> R, ImageForIntersection image_for_intersection)
+Mat SpaceIntersection::calculate_auxiliary_coordinate(int i, Mat_<double>R, Camera interior_elements, vector<PlaneCoordinates> image_points)
 {
-	Mat_<double> image_coordinate(3, 1);
-	image_coordinate.at<double>(0, 0) = image_for_intersection.image_point_[i].x_;
-	image_coordinate.at<double>(1, 0) = image_for_intersection.image_point_[i].y_;
-	image_coordinate.at<double>(2, 0) = -image_for_intersection.camera_.f_;
-	Mat_<double> auxiliary_coordinates = R * image_coordinate;
+	Mat_<double> image_coordinate(3, 1);// 像空间坐标
+	image_coordinate.at<double>(0, 0) = image_points[i].x_;
+	image_coordinate.at<double>(1, 0) = image_points[i].y_;
+	image_coordinate.at<double>(2, 0) = -interior_elements.f_;
+	Mat_<double> auxiliary_coordinates = R * image_coordinate;// 像空间辅助坐标
 	return auxiliary_coordinates;
 }
 
-ControlPoint SpaceIntersection::N1N2_intersection(int i, ImageForIntersection left_image, double N1, Mat_<double> left_auxiliary_coordinates)
+SpaceCoordinates SpaceIntersection::N1N2_intersection(int i, double N1, double N2, double By, Mat_<double> left_auxiliary_coordinates, Mat_<double> right_auxiliary_coordinates)
 {
-	double X = left_image.exterior_orientation_elements_.Xs_ + N1 * left_auxiliary_coordinates.at<double>(0, 0);
-	double Y = left_image.exterior_orientation_elements_.Ys_ + N1 * left_auxiliary_coordinates.at<double>(1, 0);
-	double Z = left_image.exterior_orientation_elements_.Zs_ + N1 * left_auxiliary_coordinates.at<double>(2, 0);
-	return ControlPoint(left_image.image_point_[i].id_, X, Y, Z);
+	double Xs1 = left_image_exterior_elements_.at<double>(0, 0);
+	double Ys1 = left_image_exterior_elements_.at<double>(1, 0);
+	double Zs1 = left_image_exterior_elements_.at<double>(2, 0);
+
+	double X1 = left_auxiliary_coordinates.at<double>(0, 0);
+	double Y1 = left_auxiliary_coordinates.at<double>(1, 0);
+	double Z1 = left_auxiliary_coordinates.at<double>(2, 0);
+	double Y2 = right_auxiliary_coordinates.at<double>(1, 0);
+
+	double X = Xs1 + N1 * X1;
+	double Y = Ys1 + 0.5 * (N1 * X1 + N2 * Y2 + By);
+	double Z = Zs1 + N1 * left_auxiliary_coordinates.at<double>(2, 0);
+
+	return SpaceCoordinates(left_image_points_[i].id_, X, Y, Z);
 }
 
 void SpaceIntersection::pointfactor_space_intersection(const char* left_image_path, const char* right_image_path, const char* reslut_file_path)
 {
-	vector<ControlPoint> vec_control_point;
+	vector<SpaceCoordinates> vec_control_points;
 	// 获取左右像片已知数据x0,y0,f,Xs,Ys,Zs,φ,ω,κ
-	get_param_from_file(left_image_path, left_image_);
-	get_param_from_file(right_image_path, right_image_);
+	get_param_from_file(left_image_path, left_m_, left_image_interior_elements_, left_image_exterior_elements_, left_image_points_);
+	get_param_from_file(right_image_path, right_m_, right_image_interior_elements_, right_image_exterior_elements_, right_image_points_);
 	// 计算基线分量
-	double Bx = right_image_.exterior_orientation_elements_.Xs_ - left_image_.exterior_orientation_elements_.Xs_;
-	double By = right_image_.exterior_orientation_elements_.Ys_ - left_image_.exterior_orientation_elements_.Ys_;
-	double Bz = right_image_.exterior_orientation_elements_.Zs_ - left_image_.exterior_orientation_elements_.Zs_;
+	double Bx = right_image_exterior_elements_.at<double>(0, 0) - left_image_exterior_elements_.at<double>(0, 0);
+	double By = right_image_exterior_elements_.at<double>(1, 0) - left_image_exterior_elements_.at<double>(1, 0);
+	double Bz = right_image_exterior_elements_.at<double>(2, 0) - left_image_exterior_elements_.at<double>(2, 0);
 	// 计算每张像片的旋转矩阵
 	Mat_<double> R_left = Mat::zeros(3, 3, CV_32F);
 	Mat_<double> R_right = Mat::zeros(3, 3, CV_32F);
-	calculate_rotation_matrix(R_left, left_image_);
-	calculate_rotation_matrix(R_right, right_image_);
-	int point_num = left_image_.image_point_.size();
+	calculate_rotation_matrix(R_left, left_image_exterior_elements_);
+	calculate_rotation_matrix(R_right, right_image_exterior_elements_);
+	int point_num = left_image_points_.size();
 	for (int i = 0; i < point_num; i++) 
 	{
 		// 由像空间坐标计算像空间辅助坐标
-		Mat_<double> left_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_left, left_image_);
-		Mat_<double> right_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_right, right_image_);
+		Mat_<double> left_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_left, left_image_interior_elements_, left_image_points_);
+		Mat_<double> right_auxiliary_coordinates = calculate_auxiliary_coordinate(i, R_right, right_image_interior_elements_, right_image_points_);
 		// 计算点投影系数
 		double N1 = (Bx * right_auxiliary_coordinates.at<double>(2, 0) - Bz * right_auxiliary_coordinates.at<double>(0, 0)) / (left_auxiliary_coordinates.at<double>(0, 0) * right_auxiliary_coordinates.at<double>(2, 0) - left_auxiliary_coordinates.at<double>(2, 0) * right_auxiliary_coordinates.at<double>(0, 0));
 		double N2 = (Bx * left_auxiliary_coordinates.at<double>(2, 0) - Bz * left_auxiliary_coordinates.at<double>(0, 0)) / (left_auxiliary_coordinates.at<double>(0, 0) * right_auxiliary_coordinates.at<double>(2, 0) - left_auxiliary_coordinates.at<double>(2, 0) * right_auxiliary_coordinates.at<double>(0, 0));
 		// 计算地面坐标
-		ControlPoint control_point = N1N2_intersection(i, left_image_, N1, left_auxiliary_coordinates);
-		vec_control_point.push_back(control_point);
+		SpaceCoordinates control_point = N1N2_intersection(i, N1, N2, Bx, left_auxiliary_coordinates, right_auxiliary_coordinates);
+		vec_control_points.push_back(control_point);
 	}
-	////Output result
 	cout << "--------------------------------------------" << endl;
 	cout << "Space Intersection result of point factor N1 N2 method" << endl;
-	for (int i = 0; i < vec_control_point.size(); i++)
+	for (int i = 0; i < vec_control_points.size(); i++)
 	{
-		cout << fixed << setprecision(5) << vec_control_point[i].id_ << " " << vec_control_point[i].x_ << " " << vec_control_point[i].y_ << " " << vec_control_point[i].z_ << endl;
+		cout << fixed << setprecision(5) << vec_control_points[i].id_ << " " << vec_control_points[i].x_ << " " << vec_control_points[i].y_ << " " << vec_control_points[i].z_ << endl;
 	}
 	cout << endl;
 	ofstream outfile;
 	outfile.open(reslut_file_path, ios::out);
-	for (int i = 0; i < vec_control_point.size(); i++)
+	for (int i = 0; i < vec_control_points.size(); i++)
 	{
-		outfile << fixed << setprecision(5) << vec_control_point[i].id_ << " " << vec_control_point[i].x_ << " " << vec_control_point[i].y_ << " " << vec_control_point[i].z_ << endl;
+		outfile << fixed << setprecision(5) << vec_control_points[i].id_ << " " << vec_control_points[i].x_ << " " << vec_control_points[i].y_ << " " << vec_control_points[i].z_ << endl;
 	}
 }

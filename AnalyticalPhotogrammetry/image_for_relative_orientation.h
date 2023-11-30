@@ -1,13 +1,13 @@
 #pragma once
 #include<vector>
 #include"camera.h"
-#include"image_point.h"
+#include"plane_coordinates.h"
 using namespace std;
 class ImageForRelativeOrientation
 {
 public:
 	Camera camera_;
 	double m_;
-	vector<ImagePoint> image_point_;
+	vector<PlaneCoordinates> image_point_;
 };
 

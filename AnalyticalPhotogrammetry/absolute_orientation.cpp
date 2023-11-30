@@ -7,11 +7,11 @@ void AbsoluteOrientation::get_param_from_file(const char* image_path)
 	while (!feof(fp))
 	{
 		fgets(buffer, 512, fp);
-		char id[5];
+		int id;
 		double Xp, Yp, Zp, Xtp, Ytp, Ztp;
-		sscanf(buffer, "%s %lf %lf %lf %lf %lf %lf\n", id, &Xp, &Yp, &Zp, &Xtp, &Ytp, &Ztp);
-		model_point_.push_back(ControlPoint(Xp, Yp, Zp));
-		control_point_.push_back(ControlPoint(Xtp, Ytp, Ztp));
+		sscanf(buffer, "%d %lf %lf %lf %lf %lf %lf\n", &id, &Xp, &Yp, &Zp, &Xtp, &Ytp, &Ztp);
+		model_points_.push_back(SpaceCoordinates(id, Xp, Yp, Zp));
+		control_points_.push_back(SpaceCoordinates(id, Xtp, Ytp, Ztp));
 	}
 	fclose(fp);
 }
@@ -21,7 +21,7 @@ void AbsoluteOrientation::calculate_absolute_rotation_matrix(Mat_<double>& R)
 	double phi = absolute_orientation_elements_.at<double>(4, 0);
 	double omega = absolute_orientation_elements_.at<double>(5, 0);
 	double kappa = absolute_orientation_elements_.at<double>(6, 0);
-
+	
 	R.at<double>(0, 0) = cos(phi) * cos(kappa) - sin(phi) * sin(omega) * sin(kappa);
 	R.at<double>(0, 1) = -cos(phi) * sin(kappa) - sin(phi) * sin(omega) * cos(kappa);
 	R.at<double>(0, 2) = -sin(phi) * cos(omega);
@@ -33,7 +33,7 @@ void AbsoluteOrientation::calculate_absolute_rotation_matrix(Mat_<double>& R)
 	R.at<double>(2, 2) = cos(phi) * cos(omega);
 }
 
-void AbsoluteOrientation::calculate_barycentric_coordinate(vector<ControlPoint>& barycentric_coordinate, vector<ControlPoint> original_coordinate, ControlPoint& gravity_center)
+void AbsoluteOrientation::calculate_barycentric_coordinate(vector<SpaceCoordinates>& barycentric_coordinate, vector<SpaceCoordinates> original_coordinate, SpaceCoordinates& gravity_center)
 {
 	int point_num = original_coordinate.size();
 	// 计算重心坐标
@@ -59,17 +59,17 @@ void AbsoluteOrientation::calculate_barycentric_coordinate(vector<ControlPoint>&
 		double baricentric_y = original_coordinate[i].y_ - y_center;
 		double baricentric_z = original_coordinate[i].z_ - z_center;
 
-		barycentric_coordinate.push_back(ControlPoint(baricentric_x, baricentric_y, baricentric_z));
+		barycentric_coordinate.push_back(SpaceCoordinates(baricentric_x, baricentric_y, baricentric_z));
 	}
 }
 
 void AbsoluteOrientation::calculate_A_matrix(int i, Mat_<double>& A, Mat_<double> model_barycentric_coordinate_rotated)
-{
-	double phi = absolute_orientation_elements_.at<double>(3, 0);
-	double omega = absolute_orientation_elements_.at<double>(4, 0);
-	double kappa = absolute_orientation_elements_.at<double>(5, 0);
-	double lambda = absolute_orientation_elements_.at<double>(6, 0);
-
+{	
+	double lambda = absolute_orientation_elements_.at<double>(3, 0);
+	double phi = absolute_orientation_elements_.at<double>(4, 0);
+	double omega = absolute_orientation_elements_.at<double>(5, 0);
+	double kappa = absolute_orientation_elements_.at<double>(6, 0);
+	// 旋转后的重心化坐标X'_=R•X_
 	double X_rotated = model_barycentric_coordinate_rotated.at<double>(0, 0);
 	double Y_rotated = model_barycentric_coordinate_rotated.at<double>(1, 0);
 	double Z_rotated = model_barycentric_coordinate_rotated.at<double>(2, 0);
@@ -79,23 +79,23 @@ void AbsoluteOrientation::calculate_A_matrix(int i, Mat_<double>& A, Mat_<double
 	partial_derivative_matrix.at<double>(0, 0) = 1;// X X
 	partial_derivative_matrix.at<double>(0, 1) = 0;// X Y
 	partial_derivative_matrix.at<double>(0, 2) = 0;// X Z
-	partial_derivative_matrix.at<double>(0, 3) = X_rotated;// X λ
-	partial_derivative_matrix.at<double>(0, 4) = -lambda * Z_rotated; //X Φ
-	partial_derivative_matrix.at<double>(0, 5) = -lambda * Y_rotated * sin(phi); //X Ω
-	partial_derivative_matrix.at<double>(0, 6) = -lambda * Y_rotated * cos(phi) * cos(omega) - lambda * Z_rotated * sin(omega); //X κ
+	partial_derivative_matrix.at<double>(0, 3) = X_rotated;// X/λ
+	partial_derivative_matrix.at<double>(0, 4) = -lambda * Z_rotated; // X Φ
+	partial_derivative_matrix.at<double>(0, 5) = -lambda * Y_rotated * sin(phi); // X Ω
+	partial_derivative_matrix.at<double>(0, 6) = -lambda * Y_rotated * cos(phi) * cos(omega) - lambda * Z_rotated * sin(omega); // X κ
 	partial_derivative_matrix.at<double>(1, 0) = 0;// Y X
 	partial_derivative_matrix.at<double>(1, 1) = 1;// Y Y
 	partial_derivative_matrix.at<double>(1, 2) = 0;// Y Z
-	partial_derivative_matrix.at<double>(1, 3) = Y_rotated;//Y λ
-	partial_derivative_matrix.at<double>(1, 4) = 0; //Y Φ
+	partial_derivative_matrix.at<double>(1, 3) = Y_rotated;// Y λ
+	partial_derivative_matrix.at<double>(1, 4) = 0; // Y Φ
 	partial_derivative_matrix.at<double>(1, 5) = lambda * X_rotated * sin(phi) - lambda * Z_rotated * cos(phi); //Y Ω
-	partial_derivative_matrix.at<double>(1, 6) = lambda * X_rotated * cos(phi) * cos(omega) + lambda * Z_rotated * sin(phi) * cos(omega); //Y κ
+	partial_derivative_matrix.at<double>(1, 6) = lambda * X_rotated * cos(phi) * cos(omega) + lambda * Z_rotated * sin(phi) * cos(omega); // Y κ
 	partial_derivative_matrix.at<double>(2, 0) = 0;// Z X
 	partial_derivative_matrix.at<double>(2, 1) = 0;// Z Y
 	partial_derivative_matrix.at<double>(2, 2) = 1;// Z Z
 	partial_derivative_matrix.at<double>(2, 3) = Z_rotated;
-	partial_derivative_matrix.at<double>(2, 4) = lambda * X_rotated; //Z Φ
-	partial_derivative_matrix.at<double>(2, 5) = lambda * Y_rotated * cos(phi); //Z Ω
+	partial_derivative_matrix.at<double>(2, 4) = lambda * X_rotated; // Z Φ
+	partial_derivative_matrix.at<double>(2, 5) = lambda * Y_rotated * cos(phi); // Z Ω
 	partial_derivative_matrix.at<double>(2, 6) = lambda * X_rotated * sin(omega) - lambda * Y_rotated * sin(phi) * cos(omega); // Z κ
 	for (int j = 0; j < 7; j++)
 	{
@@ -134,12 +134,7 @@ void AbsoluteOrientation::correct_absolute_param(Mat_<double> X)
 
 bool AbsoluteOrientation::is_tolerant(Mat_<double> X, double tolerance)
 {
-	for (int i = 0; i < 7; i++)
-	{
-		cout << X.at<double>(i, 0) << " ";
-
-	}
-	if (fabs(X.at<double>(4, 0)) < tolerance && fabs(X.at<double>(5, 0)) < tolerance && fabs(X.at<double>(6, 0)) < tolerance)
+	if (fabs(X.at<double>(0, 0)) < tolerance && fabs(X.at<double>(1, 0)) < tolerance && fabs(X.at<double>(2, 0)) < tolerance && fabs(X.at<double>(3, 0)) < tolerance && fabs(X.at<double>(4, 0)) < tolerance && fabs(X.at<double>(5, 0)) < tolerance && fabs(X.at<double>(6, 0)) < tolerance)
 	{
 		return true;
 	}
@@ -149,72 +144,81 @@ bool AbsoluteOrientation::is_tolerant(Mat_<double> X, double tolerance)
 	}
 }
 
-void AbsoluteOrientation::calculate_absolute_orientation(const char* image_path, const char* result_file_path)
+void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, const char* result_file_path)
 {
 	int iteration = 0;
 	double tolerance = 3e-5;
-	// 读入左右片的像点坐标x,y,及其内方位元素x0,y0,f和比例尺m
-	get_param_from_file(image_path);
+	// 初始化参数
+	absolute_orientation_elements_.at<double>(3, 0) = 1;// λ=1
+	// 读入模型点坐标和相应控制点坐标
+	get_param_from_file(file_path);
 
-	int point_num = model_point_.size();
+	int point_num = model_points_.size();
 
 	Mat_<double> A = Mat::zeros(3 * point_num, 7, CV_32F);
 	Mat_<double> L = Mat::zeros(3 * point_num, 1, CV_32F);
 	Mat_<double> X = Mat::zeros(7, 1, CV_32F);
+	// 统一模型点和控制点尺度
+	double d1 = sqrt(pow((model_points_[0].x_ - model_points_[1].x_), 2) + pow((model_points_[0].y_ - model_points_[1].y_), 2) + pow((model_points_[0].z_ - model_points_[1].z_), 2));
+	double d2 = sqrt(pow((control_points_[0].x_ - control_points_[1].x_), 2) + pow((control_points_[0].y_ - control_points_[1].y_), 2) + pow((control_points_[0].z_ - control_points_[1].z_), 2));
+	double m = d2 / d1;
+	for (int i = 0; i < point_num; i++)
+	{
+		control_points_[i].x_ /= m;
+		control_points_[i].y_ /= m;
+		control_points_[i].z_ /= m;
+	}
+	vector<SpaceCoordinates> model_barycentric_coordinate;//模型点重心化坐标
+	vector<SpaceCoordinates> control_barycentric_coordinate;//控制点重心化坐标
 
-	vector<ControlPoint> model_barycentric_coordinate;//模型点重心化坐标
-	vector<ControlPoint> control_barycentric_coordinate;//控制点重心化坐标
-	ControlPoint model_gravity_center, control_gravity_center;//模型点、控制点重心坐标
-	calculate_barycentric_coordinate(model_barycentric_coordinate, model_point_, model_gravity_center);
-	calculate_barycentric_coordinate(control_barycentric_coordinate, control_point_, control_gravity_center);
+	SpaceCoordinates model_gravity_center, control_gravity_center;//模型点、控制点重心坐标
+	calculate_barycentric_coordinate(model_barycentric_coordinate, model_points_, model_gravity_center);
+	calculate_barycentric_coordinate(control_barycentric_coordinate, control_points_, control_gravity_center);
 	do
 	{
 		Mat_<double> R = Mat::zeros(3, 3, CV_32F); calculate_absolute_rotation_matrix(R);
 		for (int i = 0; i < point_num; i++)
 		{
-			// 矩阵形式的重心化模型点坐标
+			// 矩阵形式的重心化模型点坐标Xp_
 			Mat_<double> model_barycentric_coordinate_matrix = Mat::zeros(3, 1, CV_32F);
 			model_barycentric_coordinate_matrix.at<double>(0, 0) = model_barycentric_coordinate[i].x_;
 			model_barycentric_coordinate_matrix.at<double>(1, 0) = model_barycentric_coordinate[i].y_;
 			model_barycentric_coordinate_matrix.at<double>(2, 0) = model_barycentric_coordinate[i].z_;
-			// 矩阵形式的重心化控制点坐标
+			// 矩阵形式的重心化控制点坐标Xtp_
 			Mat_<double> control_barycentric_coordinate_matrix = Mat::zeros(3, 1, CV_32F);
 			control_barycentric_coordinate_matrix.at<double>(0, 0) = control_barycentric_coordinate[i].x_;
 			control_barycentric_coordinate_matrix.at<double>(1, 0) = control_barycentric_coordinate[i].y_;
 			control_barycentric_coordinate_matrix.at<double>(2, 0) = control_barycentric_coordinate[i].z_;
-			// 旋转之后的重心化模型点坐
+			// 旋转之后的重心化模型点坐X'p_
 			Mat_<double> model_barycentric_coordinate_rotated = Mat::zeros(3, 1, CV_32F);
-			// X'=R•Xp
+			// X'p_=R•Xp
 			model_barycentric_coordinate_rotated = R * model_barycentric_coordinate_matrix;
 
 			calculate_A_matrix(i, A, model_barycentric_coordinate_rotated);
 			calculate_L_matrix(i, L, control_barycentric_coordinate_matrix, model_barycentric_coordinate_rotated);
 		}
-		cout << "A:\n" << A << endl;
-		cout << "L:\n" << L << endl;
+
 		X = (A.t() * A).inv() * A.t() * L;
-		cout << "X:\n" << endl;
 		correct_absolute_param(X);
-		cout << "absulte_element:" << absolute_orientation_elements_ << endl;
+		iteration += 1;
 	} while (!is_tolerant(X, tolerance));
 
 	Mat_<double>V = A * X - L;
-	cout << V << endl;
 
 	Mat_<double>V_ = V.t() * V;
 	double accuracy = sqrt(V_.at<double>(0, 0) / (3 * point_num - 7));
 
-	//cout << "Convergency!!!" << endl;
-	//cout << "Correction:" << endl;
-	//cout << X << endl;
-	//cout << "--------------------------------------------" << endl;
-	//cout << "Absolute Orientation Result: " << endl;
-	//cout << "Iteration: " << iteration << endl;
-	//cout << "Residual:" << endl;
-	//cout << "Seven Parameters of Relative Orientation(x y z fai omega kappa s): " << endl;
-	//cout << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << " " << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << " " << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << " " << absolute_orientation_elements_.at<double>(3, 0)
-	//	<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
-	//cout << "RMS Error：" << accuracy << endl;
+	cout << "Convergency!!!" << endl;
+	cout << "Correction:" << endl;
+	cout << X << endl;
+	cout << "--------------------------------------------" << endl;
+	cout << "Absolute Orientation Result: " << endl;
+	cout << "Iteration: " << iteration << endl;
+	cout << "Residual:" << endl;
+	cout << "Seven Parameters of Relative Orientation(x y z fai omega kappa s): " << endl;
+	cout << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << " " << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << " " << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << " " << absolute_orientation_elements_.at<double>(3, 0)
+		<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
+	cout << "RMS Error：" << accuracy << endl;
 
 	ofstream outfile;
 	outfile.open(result_file_path, ios::out);
@@ -231,24 +235,25 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* image_path,
 		<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
 
 	outfile << "RMS Error：" << accuracy << endl;
-	//Mat_<double> Rfinal = Mat::zeros(3, 3, CV_32F);
-	//Mat_<double> G = Mat::zeros(3, 1, CV_32F);
+
+	//Mat_<double> R_final = Mat::zeros(3, 3, CV_32F);// 旋转矩阵
+	//Mat_<double> translation_quality = Mat::zeros(3, 1, CV_32F);// 平移量
 	//Mat_<double> result = Mat::zeros(3, 1, CV_32F);
-	//AbsoluteOrientation::calculate_rotation_matrix(Rfinal, Para);
-	//G.at<double>(0, 0) = space_center.x * m;
-	//G.at<double>(1, 0) = space_center.y * m;
-	//G.at<double>(2, 0) = space_center.z * m;
+	//calculate_absolute_rotation_matrix(R_final);
+	//translation_quality.at<double>(0, 0) = absolute_orientation_elements_.at<double>(0, 0);
+	//translation_quality.at<double>(1, 0) = absolute_orientation_elements_.at<double>(1, 0);
+	//translation_quality.at<double>(2, 0) = absolute_orientation_elements_.at<double>(2, 0);
 	//cout << "Coordinate of ground points: " << endl;
 	//outfile << "Coordinate of ground points: " << endl;
 	//for (int i = 0; i < point_num; i++)
 	//{
-	//	Mat_<double> m0 = Mat::zeros(3, 1, CV_32F);
-	//	m0.at<double>(0, 0) = Pmodel[i].x;
-	//	m0.at<double>(1, 0) = Pmodel[i].y;
-	//	m0.at<double>(2, 0) = Pmodel[i].z;
-	//	result = Para.at<double>(6, 0) * m * Rfinal * m0 + G;
-	//	cout << pname[i] << " " << result << endl;
-	//	outfile << pname[i] << " " << result << endl;
+	//	Mat_<double> model_point_matrix = Mat::zeros(3, 1, CV_32F);
+	//	model_point_matrix.at<double>(0, 0) = model_points_[i].x_;
+	//	model_point_matrix.at<double>(1, 0) = model_points_[i].y_;
+	//	model_point_matrix.at<double>(2, 0) = model_points_[i].z_;
+	//	// Xtp = λRXp + Xs
+	//	result = absolute_orientation_elements_.at<double>(3, 0) * R_final * model_point_matrix + translation_quality;
+	//	cout << result << endl;
+	//	outfile << result << endl;
 	//}
-
 }

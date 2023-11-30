@@ -22,8 +22,8 @@ void InteriorOrientation::get_param_from_file(const char* file_path)
 		double xm, ym, xp, yp;
 		fgets(buffer, 512, fp);
 		sscanf(buffer, "%lf %lf %lf %lf\n", &xm, &ym, &xp, &yp);
-		frame_coordinate_points_.push_back(ImagePoint(xm, ym));
-		pixel_coordinate_points_.push_back(ImagePoint(xp, yp));
+		frame_coordinate_points_.push_back(PlaneCoordinates(xm, ym));
+		pixel_coordinate_points_.push_back(PlaneCoordinates(xp, yp));
 	}
 	fclose(fp);
 }
@@ -63,26 +63,17 @@ void InteriorOrientation::affine_interior_orientation(const char* file_path, con
 {
 	get_param_from_file(file_path);
 
-
-    //double pixel = 0.021;
-    //double width = 11129;
-    //double height = 11263;
-    //double x0 = 0.011;
-    //double y0 = 0.002;
     double x_offset = (width_ * pixel_size_) / 2;
     double y_offset = -(height_ * pixel_size_) / 2;
     int point_num = frame_coordinate_points_.size();
-    //vector<Ppoint> result;
+
     Mat_<double> A = Mat::zeros(point_num * 2, 6, CV_32F);
     Mat_<double> L = Mat::zeros(point_num * 2, 1, CV_32F);
     Mat_<double> parameters = Mat::zeros(6, 1, CV_32F);
 
-    ////Form norm equation to calculate parameters
     calculate_A_matrix(A);
-    //cout << A << endl;
     calculate_L_matrix(L);
-    //cout << L << endl;
-    //X(Para) = inv(A' * A) * A' * L
+
     parameters = (A.t() * A).inv() * A.t() * L;
     Mat_<double> V = A * parameters - L;
     Mat_<double> V_ = V.t() * V;
