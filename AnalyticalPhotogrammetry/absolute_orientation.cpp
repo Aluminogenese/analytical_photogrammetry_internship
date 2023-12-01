@@ -158,16 +158,7 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	Mat_<double> A = Mat::zeros(3 * point_num, 7, CV_32F);
 	Mat_<double> L = Mat::zeros(3 * point_num, 1, CV_32F);
 	Mat_<double> X = Mat::zeros(7, 1, CV_32F);
-	// 统一模型点和控制点尺度
-	double d1 = sqrt(pow((model_points_[0].x_ - model_points_[1].x_), 2) + pow((model_points_[0].y_ - model_points_[1].y_), 2) + pow((model_points_[0].z_ - model_points_[1].z_), 2));
-	double d2 = sqrt(pow((control_points_[0].x_ - control_points_[1].x_), 2) + pow((control_points_[0].y_ - control_points_[1].y_), 2) + pow((control_points_[0].z_ - control_points_[1].z_), 2));
-	double m = d2 / d1;
-	for (int i = 0; i < point_num; i++)
-	{
-		control_points_[i].x_ /= m;
-		control_points_[i].y_ /= m;
-		control_points_[i].z_ /= m;
-	}
+
 	vector<SpaceCoordinates> model_barycentric_coordinate;//模型点重心化坐标
 	vector<SpaceCoordinates> control_barycentric_coordinate;//控制点重心化坐标
 
@@ -212,7 +203,7 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	cout << "Absolute Orientation Result: " << endl;
 	cout << "Iteration: " << iteration << endl;
 	cout << "Residual:" << endl;
-	cout << "Seven Parameters of Relative Orientation(x y z fai omega kappa s): " << endl;
+	cout << "Seven Parameters of Relative Orientation(ΔX ΔY ΔZ λ Φ Ω κ): " << endl;
 	cout << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << " " << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << " " << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << " " << absolute_orientation_elements_.at<double>(3, 0)
 		<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
 	cout << "RMS Error：" << accuracy << endl;
@@ -224,30 +215,37 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	outfile << "Iteration: " << iteration << endl;
 	outfile << "Residual:" << endl;
 	outfile << V << endl;
-	outfile << "Seven Parameters of Relative Orientation(x y z fai omega kappa s): " << endl;
+	outfile << "Seven Parameters of Relative Orientation(ΔX ΔY ΔZ λ Φ Ω κ): " << endl;
 	outfile << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << " " << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << " " << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << " " << absolute_orientation_elements_.at<double>(3, 0)
 		<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
 
 	outfile << "RMS Error：" << accuracy << endl;
 
-	//Mat_<double> R_final = Mat::zeros(3, 3, CV_32F);// 旋转矩阵
-	//Mat_<double> translation_quality = Mat::zeros(3, 1, CV_32F);// 平移量
-	//Mat_<double> result = Mat::zeros(3, 1, CV_32F);
-	//calculate_absolute_rotation_matrix(R_final);
-	//translation_quality.at<double>(0, 0) = absolute_orientation_elements_.at<double>(0, 0);
-	//translation_quality.at<double>(1, 0) = absolute_orientation_elements_.at<double>(1, 0);
-	//translation_quality.at<double>(2, 0) = absolute_orientation_elements_.at<double>(2, 0);
-	//cout << "Coordinate of ground points: " << endl;
-	//outfile << "Coordinate of ground points: " << endl;
-	//for (int i = 0; i < point_num; i++)
-	//{
-	//	Mat_<double> model_point_matrix = Mat::zeros(3, 1, CV_32F);
-	//	model_point_matrix.at<double>(0, 0) = model_points_[i].x_;
-	//	model_point_matrix.at<double>(1, 0) = model_points_[i].y_;
-	//	model_point_matrix.at<double>(2, 0) = model_points_[i].z_;
-	//	// Xtp = λRXp + Xs
-	//	result = absolute_orientation_elements_.at<double>(3, 0) * R_final * model_point_matrix + translation_quality;
-	//	cout << result << endl;
-	//	outfile << result << endl;
-	//}
+	Mat_<double> R_final = Mat::zeros(3, 3, CV_32F);// 旋转矩阵
+	Mat_<double> translation_quality = Mat::zeros(3, 1, CV_32F);// 平移量
+	Mat_<double> control_gravity_center_matrix = Mat::zeros(3, 1, CV_32F);
+	Mat_<double> result = Mat::zeros(3, 1, CV_32F);
+
+	calculate_absolute_rotation_matrix(R_final);
+	translation_quality.at<double>(0, 0) = absolute_orientation_elements_.at<double>(0, 0);
+	translation_quality.at<double>(1, 0) = absolute_orientation_elements_.at<double>(1, 0);
+	translation_quality.at<double>(2, 0) = absolute_orientation_elements_.at<double>(2, 0);
+
+	control_gravity_center_matrix.at<double>(0, 0) = control_gravity_center.x_ ;
+	control_gravity_center_matrix.at<double>(1, 0) = control_gravity_center.y_ ;
+	control_gravity_center_matrix.at<double>(2, 0) = control_gravity_center.z_ ;
+
+	cout << "Coordinate of ground points: " << endl;
+	outfile << "Coordinate of ground points: " << endl;
+	for (int i = 0; i < point_num; i++)
+	{
+		Mat_<double> model_point_matrix = Mat::zeros(3, 1, CV_32F);
+		model_point_matrix.at<double>(0, 0) = model_barycentric_coordinate[i].x_;
+		model_point_matrix.at<double>(1, 0) = model_barycentric_coordinate[i].y_;
+		model_point_matrix.at<double>(2, 0) = model_barycentric_coordinate[i].z_;
+		// Xtp = λRXp + Xs
+		result = absolute_orientation_elements_.at<double>(3, 0) * R_final * model_point_matrix + translation_quality + control_gravity_center_matrix;
+		cout << fixed << setprecision(6) << model_points_[i].id_ << " " << result.at<double>(0, 0) << " " << result.at<double>(1, 0) << " " << result.at<double>(2, 0) << endl;
+		outfile << fixed << setprecision(6) << model_points_[i].id_ << " " << result.at<double>(0, 0) << " " << result.at<double>(1, 0) << " " << result.at<double>(2, 0) << endl;
+	}
 }

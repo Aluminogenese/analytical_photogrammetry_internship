@@ -164,13 +164,12 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 	cout << "--------------------------------------------" << endl;
 	cout << "Space Resection Result" << endl;
 	cout << "Iteration: " << iteration << endl;
-	iteration = 0;
 	cout << "Xs = " << fixed << setprecision(2) << exterior_orientation_elements_.at<double>(0, 0) << endl;
 	cout << "Ys = " << fixed << setprecision(2) << exterior_orientation_elements_.at<double>(1, 0) << endl;
 	cout << "Zs = " << fixed << setprecision(2) << exterior_orientation_elements_.at<double>(2, 0) << endl;
-	cout << "fai = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(3, 0) << endl;
-	cout << "omega = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(4, 0) << endl;
-	cout << "kappa = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(5, 0) << endl;
+	cout << "¦Õ = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(3, 0) << endl;
+	cout << "¦Ø = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(4, 0) << endl;
+	cout << "¦Ê = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(5, 0) << endl;
 	cout << "Rotation Matrix:" << endl;
 	cout << fixed << setprecision(5) << R << endl;
 	cout << "RMS Error: " << fixed << setprecision(5) << accuracy << endl;
@@ -178,12 +177,15 @@ void SpaceResection::calculate_space_resection(const char* camera_file_name, con
 
 	ofstream outfile;
 	outfile.open(result_file_name, ios::out);
+	outfile << "--------------------------------------------" << endl;
+	outfile << "Space Resection Result" << endl;
+	outfile << "Iteration: " << iteration << endl;
 	outfile << "Xs = " << fixed << setprecision(2) << exterior_orientation_elements_.at<double>(0, 0) << endl;
 	outfile << "Ys = " << fixed << setprecision(2) << exterior_orientation_elements_.at<double>(1, 0) << endl;
 	outfile << "Zs = " << fixed << setprecision(2) << exterior_orientation_elements_.at<double>(2, 0) << endl;
-	outfile << "fai = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(3, 0) << endl;
-	outfile << "omega = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(4, 0) << endl;
-	outfile << "kappa = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(5, 0) << endl;
+	outfile << "¦Õ = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(3, 0) << endl;
+	outfile << "¦Ø = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(4, 0) << endl;
+	outfile << "¦Ê = " << fixed << setprecision(5) << exterior_orientation_elements_.at<double>(5, 0) << endl;
 	outfile << "Rotation Matrix:" << endl;
 	outfile << fixed << setprecision(5) << R << endl;
 	outfile << "RMS Error: " << fixed << setprecision(5) << accuracy << endl;
