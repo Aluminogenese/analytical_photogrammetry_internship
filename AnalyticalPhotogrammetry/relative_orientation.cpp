@@ -128,20 +128,17 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 		iteration += 1;
 
 	} while (!is_tolerant(X, tolerance));
+	Mat_<double>V = A * X - L;
+	Mat_<double>V_ = V.t() * V;
+	double accuracy = sqrt(V_.at<double>(0, 0) / (point_num - 5));
 
-	cout << "Convergency!!!" << endl;
-	cout << "Correction:" << endl;
-	cout << X << endl;
 	cout << "--------------------------------------------" << endl;
 	cout << "Relative Orientation Result: " << endl;
 	cout << "Iteration: " << iteration << endl;
 	cout << "Residual:" << endl;
-	Mat_<double>V = A * X - L;
 	cout << V << endl;
 	cout << "Five Parameters of Relative Orientation(¦Õ, ¦Ø, ¦Ê, u, v): " << endl;
 	cout << relative_orientation_elements_.at<double>(0, 0) << " " << relative_orientation_elements_.at<double>(1, 0) << " " << relative_orientation_elements_.at<double>(2, 0) << " " << relative_orientation_elements_.at<double>(3, 0) << "  " << relative_orientation_elements_.at<double>(4, 0) << endl;
-	Mat_<double>V_ = V.t() * V;
-	double accuracy = sqrt(V_.at<double>(0, 0) / (point_num - 5));
 	cout << "RMS Error£º" << accuracy << endl;
 
 	ofstream outfile;

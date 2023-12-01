@@ -1,22 +1,5 @@
 #include "space_resection.h"
 
-SpaceResection::SpaceResection()
-{
-}
-
-SpaceResection::~SpaceResection()
-{
-}
-
-SpaceResection::SpaceResection(double m, Camera camera, vector<PlaneCoordinates> image_points, vector<SpaceCoordinates> control_points, Mat_<double> exterior_orientation_elements)
-{
-	m_ = m;
-	camera_ = camera;
-	image_points_ = image_points;
-	control_points_ = control_points;
-	exterior_orientation_elements_ = exterior_orientation_elements;
-}
-
 void SpaceResection::get_param_from_file(const char* camera_file_name, const char* point_file_name)
 {
 	// 读取像点坐标和相应地面点坐标

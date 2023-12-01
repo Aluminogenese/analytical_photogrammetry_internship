@@ -29,9 +29,8 @@ public:
 	double left_m_;// 比例尺分母
 
 	Camera right_image_interior_elements_;
-	Mat_<double> right_image_exterior_elements_ = Mat::zeros(6, 1, CV_32F); //外方位元素x, y, z, φ, ω, κ
+	Mat_<double> right_image_exterior_elements_ = Mat::zeros(6, 1, CV_32F);
 	vector<PlaneCoordinates> right_image_points_;
 	double right_m_;
 
 };
-

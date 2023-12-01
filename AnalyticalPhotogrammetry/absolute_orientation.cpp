@@ -208,9 +208,6 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	Mat_<double>V_ = V.t() * V;
 	double accuracy = sqrt(V_.at<double>(0, 0) / (3 * point_num - 7));
 
-	cout << "Convergency!!!" << endl;
-	cout << "Correction:" << endl;
-	cout << X << endl;
 	cout << "--------------------------------------------" << endl;
 	cout << "Absolute Orientation Result: " << endl;
 	cout << "Iteration: " << iteration << endl;
@@ -222,9 +219,6 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 
 	ofstream outfile;
 	outfile.open(result_file_path, ios::out);
-	outfile << "Convergency!!!" << endl;
-	outfile << "Correction:" << endl;
-	outfile << X << endl;
 	outfile << "--------------------------------------------" << endl;
 	outfile << "Absolute Orientation Result: " << endl;
 	outfile << "Iteration: " << iteration << endl;

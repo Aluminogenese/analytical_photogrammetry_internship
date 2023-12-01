@@ -23,7 +23,7 @@ void SpaceIntersection::get_param_from_file(const char* file_path, double& m, Ca
 	fgets(buffer, 512, fp);
 	sscanf(buffer, "%lf %lf %lf %lf %lf %lf\n", &phi, &omega, &kappa, &Xs, &Ys, &Zs);
 	exterior_elements.at<double>(0, 0) = Xs;
-	exterior_elements.at<double>(1, 0) = Ys;//TODO
+	exterior_elements.at<double>(1, 0) = Ys;
 	exterior_elements.at<double>(2, 0) = Zs;
 	exterior_elements.at<double>(3, 0) = phi * CV_PI / 180.0;
 	exterior_elements.at<double>(4, 0) = omega * CV_PI / 180.0;
@@ -75,14 +75,22 @@ SpaceCoordinates SpaceIntersection::N1N2_intersection(int i, double N1, double N
 	double Ys1 = left_image_exterior_elements_.at<double>(1, 0);
 	double Zs1 = left_image_exterior_elements_.at<double>(2, 0);
 
+	double Xs2 = right_image_exterior_elements_.at<double>(0, 0);
+	double Ys2 = right_image_exterior_elements_.at<double>(1, 0);
+	double Zs2 = right_image_exterior_elements_.at<double>(2, 0);
+
+
 	double X1 = left_auxiliary_coordinates.at<double>(0, 0);
 	double Y1 = left_auxiliary_coordinates.at<double>(1, 0);
 	double Z1 = left_auxiliary_coordinates.at<double>(2, 0);
-	double Y2 = right_auxiliary_coordinates.at<double>(1, 0);
 
-	double X = Xs1 + N1 * X1;
-	double Y = Ys1 + 0.5 * (N1 * X1 + N2 * Y2 + By);
-	double Z = Zs1 + N1 * left_auxiliary_coordinates.at<double>(2, 0);
+	double X2 = right_auxiliary_coordinates.at<double>(0, 0);
+	double Y2 = right_auxiliary_coordinates.at<double>(1, 0);
+	double Z2 = right_auxiliary_coordinates.at<double>(2, 0);
+
+	double X = 0.5 * (Xs1 + N1 * X1 + Xs2 + N2 * X2);
+	double Y = 0.5 * (Ys2 + N1 * Y1 + Ys2 + N2 * Y2);
+	double Z = 0.5 * (Zs1 + N1 * Z1 + Zs2 + N2 * Z2);
 
 	return SpaceCoordinates(left_image_points_[i].id_, X, Y, Z);
 }
@@ -102,6 +110,7 @@ void SpaceIntersection::pointfactor_space_intersection(const char* left_image_pa
 	Mat_<double> R_right = Mat::zeros(3, 3, CV_32F);
 	calculate_rotation_matrix(R_left, left_image_exterior_elements_);
 	calculate_rotation_matrix(R_right, right_image_exterior_elements_);
+
 	int point_num = left_image_points_.size();
 	for (int i = 0; i < point_num; i++) 
 	{

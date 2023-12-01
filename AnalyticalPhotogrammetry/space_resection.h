@@ -14,9 +14,6 @@ using namespace cv;
 class SpaceResection
 {
 public:
-	SpaceResection();
-	~SpaceResection();
-	SpaceResection(double m, Camera camera, vector<PlaneCoordinates> image_points, vector<SpaceCoordinates>control_points, Mat_<double> exterior_orientation_elements);
 	void get_param_from_file(const char* camera_file_name, const char* point_file_name);
 	void Initialize();
 	void calculate_rotation_matrix(Mat_<double>& R);
