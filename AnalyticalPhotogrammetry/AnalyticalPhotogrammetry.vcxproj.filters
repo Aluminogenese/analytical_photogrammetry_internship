@@ -18,10 +18,10 @@
     <ClCompile Include="AnalyticalPhotogrammetry.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="control_point.cpp">
+    <ClCompile Include="space_coordinates.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="image_point.cpp">
+    <ClCompile Include="plane_coordinates.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="space_resection.cpp">
@@ -42,15 +42,12 @@
     <ClCompile Include="camera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="exterior_orientation_elements.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="control_point.h">
+    <ClInclude Include="space_coordinates.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="image_point.h">
+    <ClInclude Include="plane_coordinates.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="space_resection.h">
@@ -69,9 +66,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="camera.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="exterior_orientation_elements.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

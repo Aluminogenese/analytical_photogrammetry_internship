@@ -86,8 +86,15 @@ void InteriorOrientation::affine_interior_orientation(const char* file_path, con
     double n1 = parameters.at<double>(4, 0);
     double n2 = parameters.at<double>(5, 0);
 
-    ////Output result
-    cout << "--------------------------------------------" << endl;
+	vector<PlaneCoordinates> calculted_points;
+	for (int i = 0; i < point_num; i++)
+	{
+		double x = m0 + m1 * pixel_coordinate_points_[i].x_ * pixel_size_ - m2 * pixel_coordinate_points_[i].y_ * pixel_size_;
+		double y = n0 + n1 * pixel_coordinate_points_[i].x_ * pixel_size_ - n2 * pixel_coordinate_points_[i].y_ * pixel_size_;
+		calculted_points.push_back(PlaneCoordinates(x, y));
+	}
+
+	cout << "--------------------------------------------" << endl;
     cout << "Interior Orientation Result" << endl;
     cout << "m0 = " << fixed << setprecision(5) << m0 << endl;
     cout << "m1 = " << fixed << setprecision(5) << m1 << endl;
@@ -96,8 +103,15 @@ void InteriorOrientation::affine_interior_orientation(const char* file_path, con
     cout << "n1 = " << fixed << setprecision(5) << n1 << endl;
     cout << "n2 = " << fixed << setprecision(5) << n2 << endl;
     cout << "RMS Error: " << fixed << setprecision(5) << accuracy << endl;
+	cout << "x\ty\tdx\tdy" << endl;
+	for (int i = 0; i < calculted_points.size(); i++)
+	{
+		cout << fixed << setprecision(5) << calculted_points[i].x_ << "\t" << calculted_points[i].y_ << "\t" << (frame_coordinate_points_[i].x_ - calculted_points[i].x_) << " \t" << (frame_coordinate_points_[i].y_ - calculted_points[i].y_) << endl;
+	}
     ofstream outfile;
     outfile.open(result_file_path, ios::out);
+	outfile << "--------------------------------------------" << endl;
+	outfile << "Interior Orientation Result" << endl;
     outfile << "m0 = " << fixed << setprecision(5) << m0 << endl;
     outfile << "m1 = " << fixed << setprecision(5) << m1 << endl;
     outfile << "m2 = " << fixed << setprecision(5) << m2 << endl;
@@ -105,5 +119,10 @@ void InteriorOrientation::affine_interior_orientation(const char* file_path, con
     outfile << "n1 = " << fixed << setprecision(5) << n1 << endl;
     outfile << "n2 = " << fixed << setprecision(5) << n2 << endl;
     outfile << "RMS Error: " << fixed << setprecision(5) << accuracy << endl;
+	outfile << "x\ty\tdx\tdy" << endl;
+	for (int i = 0; i < calculted_points.size(); i++)
+	{
+		outfile << fixed << setprecision(5) << calculted_points[i].x_ << "\t" << calculted_points[i].y_ << "\t" << frame_coordinate_points_[i].x_ - calculted_points[i].x_ << " \t" << frame_coordinate_points_[i].y_ - calculted_points[i].y_ << endl;
+	}
 }
 

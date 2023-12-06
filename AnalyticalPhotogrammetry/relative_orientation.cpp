@@ -77,7 +77,7 @@ void RelativeOrientation::correct_relative_param(Mat_<double> X)
 
 bool RelativeOrientation::is_tolerant(Mat_<double> X, double tolerance)
 {
-	if (fabs(X.at<double>(0, 0)) < tolerance && fabs(X.at<double>(1, 0)) < tolerance && fabs(X.at<double>(2, 0)) < tolerance)
+	if (fabs(X.at<double>(0, 0)) < tolerance && fabs(X.at<double>(1, 0)) < tolerance && fabs(X.at<double>(2, 0)) < tolerance && fabs(X.at<double>(3, 0)) < tolerance && fabs(X.at<double>(4, 0)) < tolerance)
 	{
 		return true;
 	}
@@ -135,18 +135,26 @@ void RelativeOrientation::calculate_relative_orientation(const char* left_image_
 	cout << "--------------------------------------------" << endl;
 	cout << "Relative Orientation Result: " << endl;
 	cout << "Iteration: " << iteration << endl;
-	cout << "Residual:" << endl;
-	cout << V << endl;
+	cout << "Residual(mm):" << endl;
+	for (int i = 0; i < point_num; i++)
+	{
+		cout << fixed << setprecision(4) << left_image_points_[i].id_ << "\t" << V.at<double>(i, 0) * 1000 << endl;
+	}
 	cout << "Five Parameters of Relative Orientation(¦Õ, ¦Ø, ¦Ê, u, v): " << endl;
-	cout << relative_orientation_elements_.at<double>(0, 0) << " " << relative_orientation_elements_.at<double>(1, 0) << " " << relative_orientation_elements_.at<double>(2, 0) << " " << relative_orientation_elements_.at<double>(3, 0) << "  " << relative_orientation_elements_.at<double>(4, 0) << endl;
-	cout << "RMS Error£º" << accuracy << endl;
+	cout << relative_orientation_elements_.at<double>(0, 0) << "\t" << relative_orientation_elements_.at<double>(1, 0) << "\t" << relative_orientation_elements_.at<double>(2, 0) << "\t" << relative_orientation_elements_.at<double>(3, 0) << "\t" << relative_orientation_elements_.at<double>(4, 0) << endl;
+	cout << "RMS Error(mm)£º" << accuracy * 1000 << endl;
 
 	ofstream outfile;
 	outfile.open(result_file_path, ios::out);
-	outfile << "Residual:" << endl;
-	outfile << V << endl;
-	outfile << "Five Parameters of Relative Orientation(¦Õ, ¦Ø, ¦Ê, u, v): " << endl;
-	outfile << relative_orientation_elements_.at<double>(0, 0) << " " << relative_orientation_elements_.at<double>(1, 0) << " " << relative_orientation_elements_.at<double>(2, 0) << " " << relative_orientation_elements_.at<double>(3, 0) << "  " << relative_orientation_elements_.at<double>(4, 0) << endl;
-	outfile << "RMS Error£º" << accuracy << endl;
+	outfile << "--------------------------------------------" << endl;
+	outfile << "Relative Orientation Result: " << endl;
 	outfile << "Iteration: " << iteration << endl;
+	outfile << "Residual(mm):" << endl;
+	for (int i = 0; i < point_num; i++)
+	{
+		outfile << fixed << setprecision(4) << left_image_points_[i].id_ << "\t" << V.at<double>(i, 0) * 1000 << endl;
+	}
+	outfile << "Five Parameters of Relative Orientation(¦Õ, ¦Ø, ¦Ê, u, v): " << endl;
+	outfile << relative_orientation_elements_.at<double>(0, 0) << "\t" << relative_orientation_elements_.at<double>(1, 0) << "\t" << relative_orientation_elements_.at<double>(2, 0) << "\t" << relative_orientation_elements_.at<double>(3, 0) << "\t" << relative_orientation_elements_.at<double>(4, 0) << endl;
+	outfile << "RMS Error(mm)£º" << accuracy * 1000 << endl;
 }

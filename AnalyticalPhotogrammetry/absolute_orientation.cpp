@@ -167,7 +167,8 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	calculate_barycentric_coordinate(control_barycentric_coordinate, control_points_, control_gravity_center);
 	do
 	{
-		Mat_<double> R = Mat::zeros(3, 3, CV_32F); calculate_absolute_rotation_matrix(R);
+		Mat_<double> R = Mat::zeros(3, 3, CV_32F);
+		calculate_absolute_rotation_matrix(R);
 		for (int i = 0; i < point_num; i++)
 		{
 			// 矩阵形式的重心化模型点坐标Xp_
@@ -204,8 +205,8 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	cout << "Iteration: " << iteration << endl;
 	cout << "Residual:" << endl;
 	cout << "Seven Parameters of Relative Orientation(ΔX ΔY ΔZ λ Φ Ω κ): " << endl;
-	cout << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << " " << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << " " << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << " " << absolute_orientation_elements_.at<double>(3, 0)
-		<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
+	cout << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << "\t" << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << "\t" << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << "\t" << absolute_orientation_elements_.at<double>(3, 0)
+		<< "\t" << absolute_orientation_elements_.at<double>(4, 0) << "\t" << absolute_orientation_elements_.at<double>(5, 0) << "\t" << absolute_orientation_elements_.at<double>(6, 0) << endl;
 	cout << "RMS Error：" << accuracy << endl;
 
 	ofstream outfile;
@@ -216,8 +217,8 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 	outfile << "Residual:" << endl;
 	outfile << V << endl;
 	outfile << "Seven Parameters of Relative Orientation(ΔX ΔY ΔZ λ Φ Ω κ): " << endl;
-	outfile << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << " " << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << " " << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << " " << absolute_orientation_elements_.at<double>(3, 0)
-		<< "  " << absolute_orientation_elements_.at<double>(4, 0) << " " << absolute_orientation_elements_.at<double>(5, 0) << " " << absolute_orientation_elements_.at<double>(6, 0) << endl;
+	outfile << absolute_orientation_elements_.at<double>(0, 0) + control_gravity_center.x_ << "\t" << absolute_orientation_elements_.at<double>(1, 0) + control_gravity_center.y_ << "\t" << absolute_orientation_elements_.at<double>(2, 0) + control_gravity_center.z_ << "\t" << absolute_orientation_elements_.at<double>(3, 0)
+		<< "\t" << absolute_orientation_elements_.at<double>(4, 0) << "\t" << absolute_orientation_elements_.at<double>(5, 0) << "\t" << absolute_orientation_elements_.at<double>(6, 0) << endl;
 
 	outfile << "RMS Error：" << accuracy << endl;
 
@@ -245,7 +246,7 @@ void AbsoluteOrientation::calculate_absolute_orientation(const char* file_path, 
 		model_point_matrix.at<double>(2, 0) = model_barycentric_coordinate[i].z_;
 		// Xtp = λRXp + Xs
 		result = absolute_orientation_elements_.at<double>(3, 0) * R_final * model_point_matrix + translation_quality + control_gravity_center_matrix;
-		cout << fixed << setprecision(6) << model_points_[i].id_ << " " << result.at<double>(0, 0) << " " << result.at<double>(1, 0) << " " << result.at<double>(2, 0) << endl;
-		outfile << fixed << setprecision(6) << model_points_[i].id_ << " " << result.at<double>(0, 0) << " " << result.at<double>(1, 0) << " " << result.at<double>(2, 0) << endl;
+		cout << fixed << setprecision(6) << model_points_[i].id_ << "\t" << result.at<double>(0, 0) << "\t" << result.at<double>(1, 0) << "\t" << result.at<double>(2, 0) << "\t" << control_points_[i].x_ - result.at<double>(0, 0) << "\t" << control_points_[i].y_ - result.at<double>(1, 0) << "\t" << control_points_[i].z_ - result.at<double>(2, 0) << endl;
+		outfile << fixed << setprecision(6) << model_points_[i].id_ << "\t" << result.at<double>(0, 0) << "\t" << result.at<double>(1, 0) << "\t" << result.at<double>(2, 0) << "\t" << control_points_[i].x_ - result.at<double>(0, 0) << "\t" << control_points_[i].y_ - result.at<double>(1, 0) << "\t" << control_points_[i].z_ - result.at<double>(2, 0) << endl;
 	}
 }

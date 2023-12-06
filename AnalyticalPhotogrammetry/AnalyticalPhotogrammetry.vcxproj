@@ -130,9 +130,8 @@
     <ClCompile Include="absolute_orientation.cpp" />
     <ClCompile Include="AnalyticalPhotogrammetry.cpp" />
     <ClCompile Include="camera.cpp" />
-    <ClCompile Include="control_point.cpp" />
-    <ClCompile Include="exterior_orientation_elements.cpp" />
-    <ClCompile Include="image_point.cpp" />
+    <ClCompile Include="space_coordinates.cpp" />
+    <ClCompile Include="plane_coordinates.cpp" />
     <ClCompile Include="interior_orientation.cpp" />
     <ClCompile Include="relative_orientation.cpp" />
     <ClCompile Include="space_intersection.cpp" />
@@ -141,9 +140,8 @@
   <ItemGroup>
     <ClInclude Include="absolute_orientation.h" />
     <ClInclude Include="camera.h" />
-    <ClInclude Include="control_point.h" />
-    <ClInclude Include="exterior_orientation_elements.h" />
-    <ClInclude Include="image_point.h" />
+    <ClInclude Include="space_coordinates.h" />
+    <ClInclude Include="plane_coordinates.h" />
     <ClInclude Include="interior_orientation.h" />
     <ClInclude Include="relative_orientation.h" />
     <ClInclude Include="space_intersection.h" />

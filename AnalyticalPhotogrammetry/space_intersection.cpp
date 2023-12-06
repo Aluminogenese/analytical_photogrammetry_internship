@@ -89,7 +89,7 @@ SpaceCoordinates SpaceIntersection::N1N2_intersection(int i, double N1, double N
 	double Z2 = right_auxiliary_coordinates.at<double>(2, 0);
 
 	double X = 0.5 * (Xs1 + N1 * X1 + Xs2 + N2 * X2);
-	double Y = 0.5 * (Ys2 + N1 * Y1 + Ys2 + N2 * Y2);
+	double Y = 0.5 * (Ys1 + N1 * Y1 + Ys2 + N2 * Y2);
 	double Z = 0.5 * (Zs1 + N1 * Z1 + Zs2 + N2 * Z2);
 
 	return SpaceCoordinates(left_image_points_[i].id_, X, Y, Z);
@@ -128,13 +128,15 @@ void SpaceIntersection::pointfactor_space_intersection(const char* left_image_pa
 	cout << "Space Intersection result of point factor N1 N2 method" << endl;
 	for (int i = 0; i < vec_control_points.size(); i++)
 	{
-		cout << fixed << setprecision(5) << vec_control_points[i].id_ << " " << vec_control_points[i].x_ << " " << vec_control_points[i].y_ << " " << vec_control_points[i].z_ << endl;
+		cout << fixed << setprecision(5) << vec_control_points[i].id_ << "\t" << vec_control_points[i].x_ << "\t" << vec_control_points[i].y_ << "\t" << vec_control_points[i].z_ << endl;
 	}
 	cout << endl;
 	ofstream outfile;
 	outfile.open(reslut_file_path, ios::out);
+	outfile << "--------------------------------------------" << endl;
+	outfile << "Space Intersection result of point factor N1 N2 method" << endl;
 	for (int i = 0; i < vec_control_points.size(); i++)
 	{
-		outfile << fixed << setprecision(5) << vec_control_points[i].id_ << " " << vec_control_points[i].x_ << " " << vec_control_points[i].y_ << " " << vec_control_points[i].z_ << endl;
+		outfile << fixed << setprecision(5) << vec_control_points[i].id_ << "\t" << vec_control_points[i].x_ << "\t" << vec_control_points[i].y_ << "\t" << vec_control_points[i].z_ << endl;
 	}
 }
